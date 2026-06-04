@@ -91,7 +91,59 @@ def add_feedback(
         "message": "Feedback saved successfully",
         "feedback_id": feedback.id
     }
+@app.post("/feedback/learn")
+def add_learning_feedback(
+    ticket_id: int,
+    rating: int,
+    comment: str,
+    db: Session = Depends(get_db)
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
 
+    if not ticket:
+        return {
+            "message": "Ticket not found"
+        }
+
+    feedback = Feedback(
+        ticket_id=ticket_id,
+        rating=rating,
+        comment=comment
+    )
+
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+
+    domain = db.query(Domain).filter(Domain.id == ticket.domain_id).first()
+
+    domain_name = domain.name if domain else "General IT Support"
+
+    learning_prompt = (
+        f"Feedback received for domain: {domain_name}\n"
+        f"Original issue: {ticket.user_input}\n"
+        f"User rating: {rating}/5\n"
+        f"User feedback: {comment}\n"
+        f"Learning instruction: Improve future clarifying questions and resolution steps for similar {domain_name} issues."
+    )
+
+    prompt_memory = PromptMemory(
+        domain_id=ticket.domain_id,
+        prompt_text=learning_prompt,
+        version=1,
+        is_active=True
+    )
+
+    db.add(prompt_memory)
+    db.commit()
+    db.refresh(prompt_memory)
+
+    return {
+        "message": "Feedback saved and prompt memory updated successfully",
+        "feedback_id": feedback.id,
+        "prompt_memory_id": prompt_memory.id,
+        "domain": domain_name
+    }
 
 @app.get("/dashboard/stats")
 def dashboard_stats(db: Session = Depends(get_db)):

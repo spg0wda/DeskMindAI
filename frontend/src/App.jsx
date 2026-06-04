@@ -9,6 +9,11 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const [rating, setRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+
   const handleProcessTicket = async () => {
     if (!userInput.trim()) {
       alert("Please enter a service desk issue");
@@ -18,6 +23,9 @@ function App() {
     try {
       setLoading(true);
       setResult(null);
+      setFeedbackMessage("");
+      setFeedbackComment("");
+      setRating(5);
 
       const response = await axios.post(
         "http://127.0.0.1:8000/agent/process",
@@ -35,6 +43,44 @@ function App() {
       alert("Backend error. Make sure FastAPI server is running.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!result?.ticket_id) {
+      alert("No ticket found for feedback.");
+      return;
+    }
+
+    if (!feedbackComment.trim()) {
+      alert("Please enter feedback comment.");
+      return;
+    }
+
+    try {
+      setFeedbackLoading(true);
+      setFeedbackMessage("");
+
+      const response = await axios.post(
+        "http://127.0.0.1:8000/feedback/learn",
+        null,
+        {
+          params: {
+            ticket_id: result.ticket_id,
+            rating: rating,
+            comment: feedbackComment,
+          },
+        }
+      );
+
+      setFeedbackMessage(response.data.message);
+      setFeedbackComment("");
+      setRating(5);
+    } catch (error) {
+      console.error(error);
+      alert("Feedback saving failed. Make sure backend is running.");
+    } finally {
+      setFeedbackLoading(false);
     }
   };
 
@@ -120,6 +166,46 @@ function App() {
               <div className="learning-note">
                 <h3>Learning Note</h3>
                 <p>{result.learning_note}</p>
+              </div>
+
+              <div className="feedback-box">
+                <h3>Improve This Agent Response</h3>
+                <p>
+                  Your feedback will be saved and used as prompt memory for
+                  future similar issues.
+                </p>
+
+                <label>Rating</label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                >
+                  <option value={5}>5 - Excellent</option>
+                  <option value={4}>4 - Good</option>
+                  <option value={3}>3 - Average</option>
+                  <option value={2}>2 - Poor</option>
+                  <option value={1}>1 - Very Poor</option>
+                </select>
+
+                <label>Feedback Comment</label>
+                <textarea
+                  className="feedback-textarea"
+                  placeholder="Example: Add more VPN troubleshooting steps before escalation."
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                />
+
+                <button onClick={handleSubmitFeedback} disabled={feedbackLoading}>
+                  {feedbackLoading
+                    ? "Saving Feedback..."
+                    : "Submit Feedback to Learning Loop"}
+                </button>
+
+                {feedbackMessage && (
+                  <div className="success-message">
+                    {feedbackMessage}
+                  </div>
+                )}
               </div>
             </div>
           )}
