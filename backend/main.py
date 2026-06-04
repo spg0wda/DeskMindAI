@@ -2,6 +2,8 @@
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
+from agents.supervisor_graph import run_service_desk_agents
+
 from database import Base, engine, get_db
 from models import User, Domain, Ticket, Feedback, AgentResponse, PromptMemory
 
@@ -149,3 +151,57 @@ def get_feedback(db: Session = Depends(get_db)):
         }
         for feedback in feedback_list
     ]
+@app.post("/agent/process")
+def process_with_agents(user_input: str, db: Session = Depends(get_db)):
+    agent_result = run_service_desk_agents(user_input)
+
+    domain = db.query(Domain).filter(Domain.name == agent_result["domain"]).first()
+
+    if not domain:
+        domain = Domain(
+            name=agent_result["domain"],
+            description=f"Auto-created domain for {agent_result['domain']} issues"
+        )
+        db.add(domain)
+        db.commit()
+        db.refresh(domain)
+
+    ticket = Ticket(
+        user_input=user_input,
+        domain_id=domain.id,
+        priority=agent_result["priority"],
+        status="Open"
+    )
+
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+
+    agent_response_text = (
+        "Questions:\n"
+        + "\n".join(agent_result["questions"])
+        + "\n\nResolution Steps:\n"
+        + "\n".join(agent_result["resolution_steps"])
+        + "\n\nLearning Note:\n"
+        + agent_result["learning_note"]
+    )
+
+    agent_response = AgentResponse(
+        ticket_id=ticket.id,
+        agent_name="LangGraph Supervisor Agent",
+        response_text=agent_response_text
+    )
+
+    db.add(agent_response)
+    db.commit()
+
+    return {
+        "message": "LangGraph agents processed the ticket successfully",
+        "ticket_id": ticket.id,
+        "user_input": user_input,
+        "domain": agent_result["domain"],
+        "priority": agent_result["priority"],
+        "questions": agent_result["questions"],
+        "resolution_steps": agent_result["resolution_steps"],
+        "learning_note": agent_result["learning_note"]
+    }
