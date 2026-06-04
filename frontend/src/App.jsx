@@ -1,8 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
+import Dashboard from "./components/Dashboard";
 import "./App.css";
 
 function App() {
+  const [page, setPage] = useState("chatbot");
   const [userInput, setUserInput] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,65 +46,87 @@ function App() {
         <span>Powered by LangGraph Supervisor Architecture</span>
       </div>
 
-      <div className="chat-card">
-        <h2>Raise a Service Desk Issue</h2>
+      <div className="nav-tabs">
+        <button
+          className={page === "chatbot" ? "active-tab" : ""}
+          onClick={() => setPage("chatbot")}
+        >
+          Chatbot
+        </button>
 
-        <textarea
-          placeholder="Example: My laptop VPN is not working"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-        />
-
-        <button onClick={handleProcessTicket} disabled={loading}>
-          {loading ? "Processing with Agents..." : "Process Ticket"}
+        <button
+          className={page === "dashboard" ? "active-tab" : ""}
+          onClick={() => setPage("dashboard")}
+        >
+          Dashboard
         </button>
       </div>
 
-      {result && (
-        <div className="result-card">
-          <h2>Agent Output</h2>
+      {page === "chatbot" && (
+        <>
+          <div className="chat-card">
+            <h2>Raise a Service Desk Issue</h2>
 
-          <div className="info-grid">
-            <div>
-              <strong>Ticket ID</strong>
-              <p>{result.ticket_id}</p>
+            <textarea
+              placeholder="Example: My laptop VPN is not working"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+            />
+
+            <button onClick={handleProcessTicket} disabled={loading}>
+              {loading ? "Processing with Agents..." : "Process Ticket"}
+            </button>
+          </div>
+
+          {result && (
+            <div className="result-card">
+              <h2>Agent Output</h2>
+
+              <div className="info-grid">
+                <div>
+                  <strong>Ticket ID</strong>
+                  <p>{result.ticket_id}</p>
+                </div>
+
+                <div>
+                  <strong>Domain</strong>
+                  <p>{result.domain}</p>
+                </div>
+
+                <div>
+                  <strong>Priority</strong>
+                  <p>{result.priority}</p>
+                </div>
+              </div>
+
+              <div className="section">
+                <h3>Clarifying Questions</h3>
+                <ul>
+                  {result.questions.map((question, index) => (
+                    <li key={index}>{question}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="section">
+                <h3>Resolution Steps</h3>
+                <ol>
+                  {result.resolution_steps.map((step, index) => (
+                    <li key={index}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="learning-note">
+                <h3>Learning Note</h3>
+                <p>{result.learning_note}</p>
+              </div>
             </div>
-
-            <div>
-              <strong>Domain</strong>
-              <p>{result.domain}</p>
-            </div>
-
-            <div>
-              <strong>Priority</strong>
-              <p>{result.priority}</p>
-            </div>
-          </div>
-
-          <div className="section">
-            <h3>Clarifying Questions</h3>
-            <ul>
-              {result.questions.map((question, index) => (
-                <li key={index}>{question}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="section">
-            <h3>Resolution Steps</h3>
-            <ol>
-              {result.resolution_steps.map((step, index) => (
-                <li key={index}>{step}</li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="learning-note">
-            <h3>Learning Note</h3>
-            <p>{result.learning_note}</p>
-          </div>
-        </div>
+          )}
+        </>
       )}
+
+      {page === "dashboard" && <Dashboard />}
     </div>
   );
 }
