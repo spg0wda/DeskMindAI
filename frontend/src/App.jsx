@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import Dashboard from "./components/Dashboard";
 import "./App.css";
+import API_BASE_URL from "./api";
 
 function App() {
   const [page, setPage] = useState("chatbot");
@@ -28,7 +29,7 @@ function App() {
       setRating(5);
 
       const response = await axios.post(
-        "http://127.0.0.1:8000/agent/process-ai",
+        `${API_BASE_URL}/agent/process-ai`,
         null,
         {
           params: {
@@ -62,7 +63,7 @@ function App() {
       setFeedbackMessage("");
 
       const response = await axios.post(
-        "http://127.0.0.1:8000/feedback/learn",
+        `${API_BASE_URL}/feedback/learn`,
         null,
         {
           params: {

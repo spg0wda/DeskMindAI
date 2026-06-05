@@ -15,3 +15,18 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+.env
+backend/.env
+frontend/.env
+
+venv/
+backend/venv/
+
+node_modules/
+frontend/node_modules/
+
+dist/
+frontend/dist/
+
+__pycache__/
+*.pyc

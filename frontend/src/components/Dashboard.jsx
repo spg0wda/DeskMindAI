@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -13,11 +14,11 @@ function Dashboard() {
     try {
       setLoading(true);
 
-      const statsResponse = await axios.get("http://127.0.0.1:8000/dashboard/stats");
-      const ticketsResponse = await axios.get("http://127.0.0.1:8000/dashboard/tickets");
-      const domainsResponse = await axios.get("http://127.0.0.1:8000/dashboard/domains");
-      const feedbackResponse = await axios.get("http://127.0.0.1:8000/dashboard/feedback");
-      const promptMemoryResponse = await axios.get("http://127.0.0.1:8000/dashboard/prompt-memory");
+      const statsResponse = await axios.get(`${API_BASE_URL}/dashboard/stats`);
+      const ticketsResponse = await axios.get(`${API_BASE_URL}/dashboard/tickets`);
+      const domainsResponse = await axios.get(`${API_BASE_URL}/dashboard/domains`);
+      const feedbackResponse = await axios.get(`${API_BASE_URL}/dashboard/feedback`);
+      const promptMemoryResponse = await axios.get(`${API_BASE_URL}/dashboard/prompt-memory`);
 
       setStats(statsResponse.data);
       setTickets(ticketsResponse.data);
