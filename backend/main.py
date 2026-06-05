@@ -203,6 +203,21 @@ def get_feedback(db: Session = Depends(get_db)):
         }
         for feedback in feedback_list
     ]
+@app.get("/dashboard/prompt-memory")
+def get_prompt_memory(db: Session = Depends(get_db)):
+    memories = db.query(PromptMemory).order_by(PromptMemory.id.desc()).all()
+
+    return [
+        {
+            "id": memory.id,
+            "domain_id": memory.domain_id,
+            "prompt_text": memory.prompt_text,
+            "version": memory.version,
+            "is_active": memory.is_active,
+            "created_at": memory.created_at
+        }
+        for memory in memories
+    ]   
 @app.post("/agent/process")
 def process_with_agents(user_input: str, db: Session = Depends(get_db)):
     agent_result = run_service_desk_agents(user_input)

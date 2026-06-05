@@ -6,6 +6,7 @@ function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [domains, setDomains] = useState([]);
   const [feedback, setFeedback] = useState([]);
+  const [promptMemory, setPromptMemory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -16,11 +17,13 @@ function Dashboard() {
       const ticketsResponse = await axios.get("http://127.0.0.1:8000/dashboard/tickets");
       const domainsResponse = await axios.get("http://127.0.0.1:8000/dashboard/domains");
       const feedbackResponse = await axios.get("http://127.0.0.1:8000/dashboard/feedback");
+      const promptMemoryResponse = await axios.get("http://127.0.0.1:8000/dashboard/prompt-memory");
 
       setStats(statsResponse.data);
       setTickets(ticketsResponse.data);
       setDomains(domainsResponse.data);
       setFeedback(feedbackResponse.data);
+      setPromptMemory(promptMemoryResponse.data);
     } catch (error) {
       console.error(error);
       alert("Dashboard loading failed. Make sure backend is running.");
@@ -71,6 +74,11 @@ function Dashboard() {
             <h3>Agent Responses</h3>
             <p>{stats.total_agent_responses}</p>
           </div>
+
+          <div className="stat-card">
+            <h3>Prompt Memory</h3>
+            <p>{stats.total_prompt_memory}</p>
+          </div>
         </div>
       )}
 
@@ -91,6 +99,7 @@ function Dashboard() {
                   <th>Domain ID</th>
                 </tr>
               </thead>
+
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket.id}>
@@ -140,6 +149,26 @@ function Dashboard() {
                 <strong>Ticket #{item.ticket_id}</strong>
                 <p>Rating: {item.rating}/5</p>
                 <p>{item.comment}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="dashboard-card">
+        <h3>Prompt Memory Logs</h3>
+
+        {promptMemory.length === 0 ? (
+          <p>No prompt memory found. Submit feedback from chatbot to create learning memory.</p>
+        ) : (
+          <div className="memory-list">
+            {promptMemory.map((memory) => (
+              <div className="memory-item" key={memory.id}>
+                <strong>Memory #{memory.id}</strong>
+                <p><b>Domain ID:</b> {memory.domain_id}</p>
+                <p><b>Version:</b> {memory.version}</p>
+                <p><b>Status:</b> {memory.is_active ? "Active" : "Inactive"}</p>
+                <pre>{memory.prompt_text}</pre>
               </div>
             ))}
           </div>
