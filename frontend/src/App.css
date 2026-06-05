@@ -393,3 +393,19 @@ td {
   font-family: Arial, Helvetica, sans-serif;
   line-height: 1.5;
 }
+.ai-summary {
+  margin-top: 24px;
+  background: #fefce8;
+  border-left: 5px solid #eab308;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.ai-summary h3 {
+  color: #854d0e;
+  margin-top: 0;
+}
+
+.ai-summary p {
+  color: #4b5563;
+}

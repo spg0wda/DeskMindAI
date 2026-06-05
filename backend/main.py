@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from agents.supervisor_graph import run_service_desk_agents
+from agents.llm_service import improve_with_groq
 
 from database import Base, engine, get_db
 from models import User, Domain, Ticket, Feedback, AgentResponse, PromptMemory
@@ -271,4 +272,82 @@ def process_with_agents(user_input: str, db: Session = Depends(get_db)):
         "questions": agent_result["questions"],
         "resolution_steps": agent_result["resolution_steps"],
         "learning_note": agent_result["learning_note"]
+    }
+@app.post("/agent/process-ai")
+def process_with_ai_agents(user_input: str, db: Session = Depends(get_db)):
+    agent_result = run_service_desk_agents(user_input)
+
+    domain = db.query(Domain).filter(Domain.name == agent_result["domain"]).first()
+
+    if not domain:
+        domain = Domain(
+            name=agent_result["domain"],
+            description=f"Auto-created domain for {agent_result['domain']} issues"
+        )
+        db.add(domain)
+        db.commit()
+        db.refresh(domain)
+
+    memory_rows = (
+        db.query(PromptMemory)
+        .filter(PromptMemory.domain_id == domain.id)
+        .filter(PromptMemory.is_active == True)
+        .order_by(PromptMemory.id.desc())
+        .limit(3)
+        .all()
+    )
+
+    memory_texts = [memory.prompt_text for memory in memory_rows]
+
+    ai_result = improve_with_groq(
+        user_input=user_input,
+        domain=agent_result["domain"],
+        priority=agent_result["priority"],
+        questions=agent_result["questions"],
+        resolution_steps=agent_result["resolution_steps"],
+        memory_texts=memory_texts
+    )
+
+    ticket = Ticket(
+        user_input=user_input,
+        domain_id=domain.id,
+        priority=agent_result["priority"],
+        status="Open"
+    )
+
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+
+    agent_response_text = (
+        "AI Enhanced Questions:\n"
+        + "\n".join(ai_result["questions"])
+        + "\n\nAI Enhanced Resolution Steps:\n"
+        + "\n".join(ai_result["resolution_steps"])
+        + "\n\nAI Summary:\n"
+        + ai_result["ai_summary"]
+        + "\n\nLearning Note:\n"
+        + agent_result["learning_note"]
+    )
+
+    agent_response = AgentResponse(
+        ticket_id=ticket.id,
+        agent_name="LangGraph Supervisor Agent + Groq AI",
+        response_text=agent_response_text
+    )
+
+    db.add(agent_response)
+    db.commit()
+
+    return {
+        "message": "AI agents processed the ticket successfully",
+        "ticket_id": ticket.id,
+        "user_input": user_input,
+        "domain": agent_result["domain"],
+        "priority": agent_result["priority"],
+        "questions": ai_result["questions"],
+        "resolution_steps": ai_result["resolution_steps"],
+        "learning_note": agent_result["learning_note"],
+        "ai_summary": ai_result["ai_summary"],
+        "ai_used": ai_result["ai_used"]
     }

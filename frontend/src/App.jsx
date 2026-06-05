@@ -28,7 +28,7 @@ function App() {
       setRating(5);
 
       const response = await axios.post(
-        "http://127.0.0.1:8000/agent/process",
+        "http://127.0.0.1:8000/agent/process-ai",
         null,
         {
           params: {
@@ -167,6 +167,15 @@ function App() {
                 <h3>Learning Note</h3>
                 <p>{result.learning_note}</p>
               </div>
+              {result.ai_summary && (
+  <div className="ai-summary">
+    <h3>AI Enhancement Summary</h3>
+    <p>{result.ai_summary}</p>
+    <strong>
+      {result.ai_used ? "Groq AI was used." : "Rule-based fallback was used."}
+    </strong>
+  </div>
+)}
 
               <div className="feedback-box">
                 <h3>Improve This Agent Response</h3>
