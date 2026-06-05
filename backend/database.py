@@ -7,11 +7,13 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = quote_plus(os.getenv("DB_PASSWORD", ""))
-DB_NAME = os.getenv("DB_NAME", "deskmindai_db")
+DB_HOST = os.getenv("DB_HOST") or os.getenv("MYSQLHOST") or "localhost"
+DB_PORT = os.getenv("DB_PORT") or os.getenv("MYSQLPORT") or "3306"
+DB_USER = os.getenv("DB_USER") or os.getenv("MYSQLUSER") or "root"
+DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("MYSQLPASSWORD") or ""
+DB_NAME = os.getenv("DB_NAME") or os.getenv("MYSQLDATABASE") or "deskmindai_db"
+
+DB_PASSWORD = quote_plus(DB_PASSWORD)
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
