@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   BarChart,
   Bar,
@@ -200,7 +202,200 @@ function Dashboard({ focus }) {
   const closeTicketDetail = () => {
     setSelectedTicket(null);
   };
+  const formatDate = (dateValue) => {
+  if (!dateValue) return "Not available";
+  return new Date(dateValue).toLocaleString();
+};
 
+const addWrappedText = (doc, text, x, y, maxWidth, lineHeight = 7) => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const lines = doc.splitTextToSize(String(text || "Not available"), maxWidth);
+
+  lines.forEach((line) => {
+    if (y > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.text(line, x, y);
+    y += lineHeight;
+  });
+
+  return y;
+};
+
+const addSectionTitle = (doc, title, y) => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  if (y > pageHeight - 25) {
+    doc.addPage();
+    y = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setTextColor(37, 99, 235);
+  doc.setFont(undefined, "bold");
+  doc.text(title, 14, y);
+
+  doc.setDrawColor(37, 99, 235);
+  doc.line(14, y + 2, 196, y + 2);
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont(undefined, "normal");
+
+  return y + 10;
+};
+
+const downloadTicketPdf = (ticket) => {
+  if (!ticket) {
+    alert("No ticket selected.");
+    return;
+  }
+
+  const doc = new jsPDF("p", "mm", "a4");
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Header
+  doc.setFillColor(7, 17, 31);
+  doc.rect(0, 0, pageWidth, 34, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont(undefined, "bold");
+  doc.text("DeskMindAI Ticket Report", 14, 18);
+
+  doc.setFontSize(10);
+  doc.setFont(undefined, "normal");
+  doc.text(`Generated: ${formatDate(new Date())}`, 14, 27);
+
+  // Summary table
+  autoTable(doc, {
+    startY: 42,
+    head: [["Field", "Value"]],
+    body: [
+      ["Ticket ID", `#${ticket.id}`],
+      ["Domain", ticket.domain_name || "Unknown"],
+      ["Priority", ticket.priority || "Not available"],
+      ["Status", ticket.status || "Not available"],
+      ["Created At", formatDate(ticket.created_at)],
+    ],
+    theme: "grid",
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    styles: {
+      fontSize: 10,
+      cellPadding: 4,
+    },
+    columnStyles: {
+      0: {
+        fontStyle: "bold",
+        cellWidth: 45,
+      },
+      1: {
+        cellWidth: 130,
+      },
+    },
+    margin: {
+      left: 14,
+      right: 14,
+    },
+  });
+
+  let y = doc.lastAutoTable.finalY + 14;
+
+  // User Issue
+  y = addSectionTitle(doc, "User Issue", y);
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  y = addWrappedText(doc, ticket.user_input, 14, y, 180, 7);
+  y += 8;
+
+  // Agent Responses
+  y = addSectionTitle(doc, "Agent Responses", y);
+
+  if (!ticket.agent_responses || ticket.agent_responses.length === 0) {
+    doc.setFontSize(11);
+    y = addWrappedText(doc, "No agent responses found.", 14, y, 180, 7);
+    y += 8;
+  } else {
+    ticket.agent_responses.forEach((response, index) => {
+      if (y > pageHeight - 35) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont(undefined, "bold");
+      doc.text(
+        `${index + 1}. ${response.agent_name || "Agent Response"}`,
+        14,
+        y
+      );
+
+      y += 8;
+
+      doc.setFont(undefined, "normal");
+      doc.setTextColor(30, 41, 59);
+      y = addWrappedText(doc, response.response_text, 14, y, 180, 6.5);
+      y += 8;
+    });
+  }
+
+  // Feedback
+  y = addSectionTitle(doc, "Feedback", y);
+
+  if (!ticket.feedback || ticket.feedback.length === 0) {
+    doc.setFontSize(11);
+    y = addWrappedText(
+      doc,
+      "No feedback submitted for this ticket.",
+      14,
+      y,
+      180,
+      7
+    );
+  } else {
+    ticket.feedback.forEach((item, index) => {
+      if (y > pageHeight - 35) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFontSize(11);
+      doc.setFont(undefined, "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${index + 1}. Rating: ${item.rating}/5`, 14, y);
+
+      y += 8;
+
+      doc.setFont(undefined, "normal");
+      doc.setTextColor(30, 41, 59);
+      y = addWrappedText(doc, item.comment, 14, y, 180, 6.5);
+      y += 8;
+    });
+  }
+
+  // Footer page numbers
+  const pageCount = doc.internal.getNumberOfPages();
+
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+
+    doc.text("DeskMindAI - Enterprise Multi-Agent Service Desk Chatbot", 14, 288);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - 35, 288);
+  }
+
+  doc.save(`DeskMindAI_Ticket_${ticket.id}_Report.pdf`);
+};
   const resetFilters = () => {
     setSearchText("");
     setPriorityFilter("All");
@@ -592,9 +787,18 @@ function Dashboard({ focus }) {
                 <p>{selectedTicket.domain_name}</p>
               </div>
 
-              <button className="modal-close-btn" onClick={closeTicketDetail}>
-                ×
-              </button>
+              <div className="modal-actions">
+  <button
+    className="download-pdf-btn"
+    onClick={() => downloadTicketPdf(selectedTicket)}
+  >
+    Download PDF
+  </button>
+
+  <button className="modal-close-btn" onClick={closeTicketDetail}>
+    ×
+  </button>
+</div>
             </div>
 
             {detailLoading ? (

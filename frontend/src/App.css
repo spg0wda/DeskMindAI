@@ -1205,3 +1205,39 @@ tbody tr {
     padding: 20px;
   }
 }
+/* ---------- PDF Export Button ---------- */
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.download-pdf-btn {
+  width: auto;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.download-pdf-btn:hover {
+  background: rgba(34, 197, 94, 0.26);
+  color: white;
+}
+
+@media (max-width: 650px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+
+  .download-pdf-btn {
+    width: 100%;
+  }
+}
