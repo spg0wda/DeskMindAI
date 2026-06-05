@@ -205,7 +205,57 @@ def update_ticket_status(
         "ticket_id": ticket.id,
         "new_status": ticket.status
     }
+@app.get("/tickets/{ticket_id}")
+def get_ticket_detail(ticket_id: int, db: Session = Depends(get_db)):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
 
+    if not ticket:
+        raise HTTPException(
+            status_code=404,
+            detail="Ticket not found"
+        )
+
+    agent_responses = (
+        db.query(AgentResponse)
+        .filter(AgentResponse.ticket_id == ticket_id)
+        .order_by(AgentResponse.id.desc())
+        .all()
+    )
+
+    feedback_items = (
+        db.query(Feedback)
+        .filter(Feedback.ticket_id == ticket_id)
+        .order_by(Feedback.id.desc())
+        .all()
+    )
+
+    return {
+        "id": ticket.id,
+        "user_input": ticket.user_input,
+        "priority": ticket.priority,
+        "status": ticket.status,
+        "domain_id": ticket.domain_id,
+        "domain_name": ticket.domain.name if ticket.domain else "Unknown",
+        "created_at": ticket.created_at,
+        "agent_responses": [
+            {
+                "id": response.id,
+                "agent_name": response.agent_name,
+                "response_text": response.response_text,
+                "created_at": response.created_at
+            }
+            for response in agent_responses
+        ],
+        "feedback": [
+            {
+                "id": item.id,
+                "rating": item.rating,
+                "comment": item.comment,
+                "created_at": item.created_at
+            }
+            for item in feedback_items
+        ]
+    }
 
 @app.get("/dashboard/domains")
 def get_domains(db: Session = Depends(get_db)):

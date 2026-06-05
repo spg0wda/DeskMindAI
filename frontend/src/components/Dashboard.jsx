@@ -38,6 +38,9 @@ function Dashboard({ focus }) {
   const [domainFilter, setDomainFilter] = useState("All");
   const [updatingTicketId, setUpdatingTicketId] = useState(null);
 
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -46,7 +49,9 @@ function Dashboard({ focus }) {
       const ticketsResponse = await axios.get(`${API_BASE_URL}/dashboard/tickets`);
       const domainsResponse = await axios.get(`${API_BASE_URL}/dashboard/domains`);
       const feedbackResponse = await axios.get(`${API_BASE_URL}/dashboard/feedback`);
-      const promptMemoryResponse = await axios.get(`${API_BASE_URL}/dashboard/prompt-memory`);
+      const promptMemoryResponse = await axios.get(
+        `${API_BASE_URL}/dashboard/prompt-memory`
+      );
 
       setStats(statsResponse.data);
       setTickets(ticketsResponse.data);
@@ -90,6 +95,7 @@ function Dashboard({ focus }) {
 
     items.forEach((item) => {
       const rating = Number(item.rating);
+
       if (rating === 5) counts["5 Stars"] += 1;
       if (rating === 4) counts["4 Stars"] += 1;
       if (rating === 3) counts["3 Stars"] += 1;
@@ -176,6 +182,25 @@ function Dashboard({ focus }) {
     }
   };
 
+  const fetchTicketDetail = async (ticketId) => {
+    try {
+      setDetailLoading(true);
+
+      const response = await axios.get(`${API_BASE_URL}/tickets/${ticketId}`);
+
+      setSelectedTicket(response.data);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load ticket details.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeTicketDetail = () => {
+    setSelectedTicket(null);
+  };
+
   const resetFilters = () => {
     setSearchText("");
     setPriorityFilter("All");
@@ -206,6 +231,7 @@ function Dashboard({ focus }) {
               />
             ))}
           </Pie>
+
           <Tooltip
             contentStyle={{
               backgroundColor: "#0b1829",
@@ -227,9 +253,13 @@ function Dashboard({ focus }) {
     return (
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="rgba(148, 163, 184, 0.15)"
+          />
           <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
           <YAxis stroke="#94a3b8" allowDecimals={false} />
+
           <Tooltip
             contentStyle={{
               backgroundColor: "#0b1829",
@@ -238,6 +268,7 @@ function Dashboard({ focus }) {
               color: "#ffffff",
             }}
           />
+
           <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#38bdf8" />
         </BarChart>
       </ResponsiveContainer>
@@ -269,6 +300,7 @@ function Dashboard({ focus }) {
               ? "Settings"
               : "Dashboard Overview"}
           </h2>
+
           <p>Monitor tickets, analytics, agent performance, and learning memory.</p>
         </div>
 
@@ -416,6 +448,7 @@ function Dashboard({ focus }) {
                     <th>Priority</th>
                     <th>Status</th>
                     <th>Update Status</th>
+                    <th>Details</th>
                   </tr>
                 </thead>
 
@@ -425,11 +458,15 @@ function Dashboard({ focus }) {
                       <td>#{ticket.id}</td>
                       <td>{ticket.user_input}</td>
                       <td>{ticket.domain_name}</td>
+
                       <td>
-                        <span className={`priority-pill ${ticket.priority?.toLowerCase()}`}>
+                        <span
+                          className={`priority-pill ${ticket.priority?.toLowerCase()}`}
+                        >
                           {ticket.priority}
                         </span>
                       </td>
+
                       <td>
                         <span
                           className={`status-pill ${ticket.status
@@ -439,6 +476,7 @@ function Dashboard({ focus }) {
                           {ticket.status}
                         </span>
                       </td>
+
                       <td>
                         <select
                           className="status-select"
@@ -453,6 +491,15 @@ function Dashboard({ focus }) {
                           <option value="Resolved">Resolved</option>
                           <option value="Closed">Closed</option>
                         </select>
+                      </td>
+
+                      <td>
+                        <button
+                          className="view-detail-btn"
+                          onClick={() => fetchTicketDetail(ticket.id)}
+                        >
+                          View Details
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -534,6 +581,97 @@ function Dashboard({ focus }) {
             environment variables.
           </p>
         </section>
+      )}
+
+      {selectedTicket && (
+        <div className="modal-overlay">
+          <div className="ticket-modal">
+            <div className="modal-header">
+              <div>
+                <h2>Ticket #{selectedTicket.id}</h2>
+                <p>{selectedTicket.domain_name}</p>
+              </div>
+
+              <button className="modal-close-btn" onClick={closeTicketDetail}>
+                ×
+              </button>
+            </div>
+
+            {detailLoading ? (
+              <p className="muted-text">Loading ticket details...</p>
+            ) : (
+              <>
+                <div className="ticket-detail-grid">
+                  <div>
+                    <span>Priority</span>
+                    <strong
+                      className={`priority-pill ${selectedTicket.priority?.toLowerCase()}`}
+                    >
+                      {selectedTicket.priority}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Status</span>
+                    <strong
+                      className={`status-pill ${selectedTicket.status
+                        ?.toLowerCase()
+                        .replace(" ", "-")}`}
+                    >
+                      {selectedTicket.status}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Created At</span>
+                    <strong>
+                      {selectedTicket.created_at
+                        ? new Date(selectedTicket.created_at).toLocaleString()
+                        : "Not available"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="ticket-detail-section">
+                  <h3>User Issue</h3>
+                  <p>{selectedTicket.user_input}</p>
+                </div>
+
+                <div className="ticket-detail-section">
+                  <h3>Agent Responses</h3>
+
+                  {selectedTicket.agent_responses?.length === 0 ? (
+                    <p className="muted-text">No agent responses found.</p>
+                  ) : (
+                    selectedTicket.agent_responses?.map((response) => (
+                      <div className="response-block" key={response.id}>
+                        <strong>{response.agent_name}</strong>
+                        <pre>{response.response_text}</pre>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="ticket-detail-section">
+                  <h3>Feedback</h3>
+
+                  {selectedTicket.feedback?.length === 0 ? (
+                    <p className="muted-text">
+                      No feedback submitted for this ticket.
+                    </p>
+                  ) : (
+                    selectedTicket.feedback?.map((item) => (
+                      <div className="response-block" key={item.id}>
+                        <strong>Rating: {item.rating}/5</strong>
+                        <p>{item.comment}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
