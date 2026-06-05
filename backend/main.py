@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Depends
+﻿from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -169,10 +169,42 @@ def get_tickets(db: Session = Depends(get_db)):
             "priority": ticket.priority,
             "status": ticket.status,
             "domain_id": ticket.domain_id,
+            "domain_name": ticket.domain.name if ticket.domain else "Unknown",
             "created_at": ticket.created_at
         }
         for ticket in tickets
     ]
+@app.put("/tickets/{ticket_id}/status")
+def update_ticket_status(
+    ticket_id: int,
+    status: str,
+    db: Session = Depends(get_db)
+):
+    allowed_status = ["Open", "In Progress", "Resolved", "Closed"]
+
+    if status not in allowed_status:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid status. Allowed values: Open, In Progress, Resolved, Closed"
+        )
+
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+
+    if not ticket:
+        raise HTTPException(
+            status_code=404,
+            detail="Ticket not found"
+        )
+
+    ticket.status = status
+    db.commit()
+    db.refresh(ticket)
+
+    return {
+        "message": "Ticket status updated successfully",
+        "ticket_id": ticket.id,
+        "new_status": ticket.status
+    }
 
 
 @app.get("/dashboard/domains")

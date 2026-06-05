@@ -1,8 +1,20 @@
 import { useState } from "react";
 import axios from "axios";
 import Dashboard from "./components/Dashboard";
-import "./App.css";
 import API_BASE_URL from "./api";
+import "./App.css";
+import {
+  Bot,
+  LayoutDashboard,
+  Ticket,
+  Globe,
+  MessageCircle,
+  Brain,
+  Settings,
+  Plus,
+  Send,
+  Sparkles
+} from "lucide-react";
 
 function App() {
   const [page, setPage] = useState("chatbot");
@@ -14,6 +26,16 @@ function App() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
+
+  const menuItems = [
+  { id: "chatbot", label: "Chatbot", icon: Bot },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "tickets", label: "Tickets", icon: Ticket },
+  { id: "domains", label: "Domains", icon: Globe },
+  { id: "feedback", label: "Feedback", icon: MessageCircle },
+  { id: "memory", label: "Prompt Memory", icon: Brain },
+  { id: "settings", label: "Settings", icon: Settings },
+];
 
   const handleProcessTicket = async () => {
     if (!userInput.trim()) {
@@ -68,7 +90,7 @@ function App() {
         {
           params: {
             ticket_id: result.ticket_id,
-            rating: rating,
+            rating,
             comment: feedbackComment,
           },
         }
@@ -85,144 +107,239 @@ function App() {
     }
   };
 
+  const resetTicket = () => {
+    setUserInput("");
+    setResult(null);
+    setFeedbackComment("");
+    setFeedbackMessage("");
+    setRating(5);
+    setPage("chatbot");
+  };
+
   return (
-    <div className="app-container">
-      <div className="hero-section">
-        <h1>DeskMindAI</h1>
-        <p>Enterprise Multi-Agent Service Desk Chatbot</p>
-        <span>Powered by LangGraph Supervisor Architecture</span>
-      </div>
+    <div className="dark-shell">
+      <aside className="sidebar">
+        <div className="brand">
+         <div className="brand-icon">
+  <Brain size={22} />
+</div>
+          <h1>DeskMindAI</h1>
+        </div>
 
-      <div className="nav-tabs">
-        <button
-          className={page === "chatbot" ? "active-tab" : ""}
-          onClick={() => setPage("chatbot")}
-        >
-          Chatbot
-        </button>
-
-        <button
-          className={page === "dashboard" ? "active-tab" : ""}
-          onClick={() => setPage("dashboard")}
-        >
-          Dashboard
-        </button>
-      </div>
-
-      {page === "chatbot" && (
-        <>
-          <div className="chat-card">
-            <h2>Raise a Service Desk Issue</h2>
-
-            <textarea
-              placeholder="Example: My laptop VPN is not working"
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-            />
-
-            <button onClick={handleProcessTicket} disabled={loading}>
-              {loading ? "Processing with Agents..." : "Process Ticket"}
+        <nav className="side-nav">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              className={page === item.id ? "nav-item active" : "nav-item"}
+              onClick={() => setPage(item.id)}
+            >
+              <item.icon size={18} />
+              {item.label}
             </button>
+          ))}
+        </nav>
+
+        <div className="user-card">
+          <div className="avatar">A</div>
+          <div>
+            <strong>Admin User</strong>
+            <p>admin@deskmind.ai</p>
+          </div>
+          <span className="online-dot"></span>
+        </div>
+      </aside>
+
+      <main className="main-area">
+        <header className="topbar">
+          <div>
+            <h2>Welcome back, Admin 👋</h2>
+            <p>Monitor tickets, AI responses, feedback, and prompt memory in one place.</p>
           </div>
 
-          {result && (
-            <div className="result-card">
-              <h2>Agent Output</h2>
+          <button className="new-ticket-btn" onClick={resetTicket}>
+           <Plus size={16} />
+New Ticket
+          </button>
+        </header>
 
-              <div className="info-grid">
-                <div>
-                  <strong>Ticket ID</strong>
-                  <p>{result.ticket_id}</p>
+        {page === "chatbot" && (
+          <>
+            <section className="chat-grid">
+              <div className="dark-card input-card">
+                <div className="card-title-row">
+                  <h3>Raise a Service Desk Issue</h3>
                 </div>
 
-                <div>
-                  <strong>Domain</strong>
-                  <p>{result.domain}</p>
-                </div>
-
-                <div>
-                  <strong>Priority</strong>
-                  <p>{result.priority}</p>
-                </div>
-              </div>
-
-              <div className="section">
-                <h3>Clarifying Questions</h3>
-                <ul>
-                  {result.questions.map((question, index) => (
-                    <li key={index}>{question}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="section">
-                <h3>Resolution Steps</h3>
-                <ol>
-                  {result.resolution_steps.map((step, index) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                </ol>
-              </div>
-
-              <div className="learning-note">
-                <h3>Learning Note</h3>
-                <p>{result.learning_note}</p>
-              </div>
-              {result.ai_summary && (
-  <div className="ai-summary">
-    <h3>AI Enhancement Summary</h3>
-    <p>{result.ai_summary}</p>
-    <strong>
-      {result.ai_used ? "Groq AI was used." : "Rule-based fallback was used."}
-    </strong>
-  </div>
-)}
-
-              <div className="feedback-box">
-                <h3>Improve This Agent Response</h3>
-                <p>
-                  Your feedback will be saved and used as prompt memory for
-                  future similar issues.
-                </p>
-
-                <label>Rating</label>
-                <select
-                  value={rating}
-                  onChange={(e) => setRating(Number(e.target.value))}
-                >
-                  <option value={5}>5 - Excellent</option>
-                  <option value={4}>4 - Good</option>
-                  <option value={3}>3 - Average</option>
-                  <option value={2}>2 - Poor</option>
-                  <option value={1}>1 - Very Poor</option>
-                </select>
-
-                <label>Feedback Comment</label>
                 <textarea
-                  className="feedback-textarea"
-                  placeholder="Example: Add more VPN troubleshooting steps before escalation."
-                  value={feedbackComment}
-                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  placeholder="Describe your issue in detail..."
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
                 />
 
-                <button onClick={handleSubmitFeedback} disabled={feedbackLoading}>
-                  {feedbackLoading
-                    ? "Saving Feedback..."
-                    : "Submit Feedback to Learning Loop"}
+                <button
+                  className="primary-btn"
+                  onClick={handleProcessTicket}
+                  disabled={loading}
+                >
+                  {loading ? "Processing with AI Agents..." : "Process Ticket"}
+                  <Send size={16} />
                 </button>
+              </div>
 
-                {feedbackMessage && (
-                  <div className="success-message">
-                    {feedbackMessage}
+              <div className="dark-card response-card">
+                <div className="card-title-row">
+                  <h3>AI Agent Response</h3>
+                  <span className="ai-badge">AI Powered</span>
+                </div>
+
+                {!result ? (
+                  <div className="empty-response">
+                    <p>Submit a ticket to see AI analysis.</p>
+                  </div>
+                ) : (
+                  <div className="mini-output">
+                    <div>
+                      <span>Domain</span>
+                      <strong>{result.domain}</strong>
+                    </div>
+
+                    <div>
+                      <span>Priority</span>
+                      <strong className={`priority-pill ${result.priority?.toLowerCase()}`}>
+                        {result.priority}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Questions</span>
+                      <strong>{result.questions?.length || 0}</strong>
+                    </div>
+
+                    <div>
+                      <span>Steps</span>
+                      <strong>{result.resolution_steps?.length || 0}</strong>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </>
-      )}
+            </section>
 
-      {page === "dashboard" && <Dashboard />}
+            <section className="overview-card">
+              <h3>Dashboard Overview</h3>
+
+              <div className="overview-grid">
+                <div className="metric-card blue">
+                  <strong>{result ? result.ticket_id : "—"}</strong>
+                  <span>Current Ticket</span>
+                </div>
+
+                <div className="metric-card green">
+                  <strong>{result ? result.domain : "—"}</strong>
+                  <span>Detected Domain</span>
+                </div>
+
+                <div className="metric-card pink">
+                  <strong>{result ? result.priority : "—"}</strong>
+                  <span>Priority Level</span>
+                </div>
+
+                <div className="metric-card yellow">
+                  <strong>{result?.ai_used ? "Yes" : "No"}</strong>
+                  <span>Groq AI Used</span>
+                </div>
+
+                <div className="metric-card cyan">
+                  <strong>{result ? "Active" : "Waiting"}</strong>
+                  <span>Agent Status</span>
+                </div>
+              </div>
+            </section>
+
+            {result && (
+              <section className="details-grid">
+                <div className="dark-card">
+                  <h3>Clarifying Questions</h3>
+                  <ul className="dark-list">
+                    {result.questions.map((question, index) => (
+                      <li key={index}>{question}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="dark-card">
+                  <h3>Resolution Steps</h3>
+                  <ol className="dark-list">
+                    {result.resolution_steps.map((step, index) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="dark-card full-width">
+                  <h3>AI Enhancement Summary</h3>
+                  <p className="muted-text">
+                    {result.ai_summary || "AI summary not available."}
+                  </p>
+                  <span className="status-chip">
+                    {result.ai_used
+                      ? "Groq AI was used"
+                      : "Rule-based fallback was used"}
+                  </span>
+                </div>
+
+                <div className="dark-card full-width learning-card">
+                  <h3>Learning Loop Feedback</h3>
+                  <p>
+                    Your feedback will be saved into domain-based prompt memory
+                    for future improvements.
+                  </p>
+
+                  <label>Rating</label>
+                  <select
+                    value={rating}
+                    onChange={(e) => setRating(Number(e.target.value))}
+                  >
+                    <option value={5}>5 - Excellent</option>
+                    <option value={4}>4 - Good</option>
+                    <option value={3}>3 - Average</option>
+                    <option value={2}>2 - Poor</option>
+                    <option value={1}>1 - Very Poor</option>
+                  </select>
+
+                  <label>Feedback Comment</label>
+                  <textarea
+                    className="feedback-area"
+                    placeholder="Example: Add more VPN troubleshooting steps before escalation."
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                  />
+
+                  <button
+                    className="primary-btn"
+                    onClick={handleSubmitFeedback}
+                    disabled={feedbackLoading}
+                  >
+                    {feedbackLoading
+                      ? "Saving Feedback..."
+                      : "Submit Feedback to Learning Loop"}
+                    <span>→</span>
+                  </button>
+
+                  {feedbackMessage && (
+                    <div className="success-message">{feedbackMessage}</div>
+                  )}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+
+        {page === "dashboard" && <Dashboard />}
+
+        {["tickets", "domains", "feedback", "memory", "settings"].includes(page) && (
+          <Dashboard focus={page} />
+        )}
+      </main>
     </div>
   );
 }
