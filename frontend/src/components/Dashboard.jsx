@@ -1,6 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import API_BASE_URL from "../api";
+
+const chartColors = [
+  "#38bdf8",
+  "#22c55e",
+  "#a855f7",
+  "#f59e0b",
+  "#ef4444",
+  "#14b8a6",
+  "#e879f9",
+];
 
 function Dashboard({ focus }) {
   const [stats, setStats] = useState(null);
@@ -43,6 +65,72 @@ function Dashboard({ focus }) {
     fetchDashboardData();
   }, []);
 
+  const countByValue = (items, key, fallback = "Unknown") => {
+    const counts = {};
+
+    items.forEach((item) => {
+      const value = item[key] || fallback;
+      counts[value] = (counts[value] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  };
+
+  const countFeedbackRatings = (items) => {
+    const counts = {
+      "5 Stars": 0,
+      "4 Stars": 0,
+      "3 Stars": 0,
+      "2 Stars": 0,
+      "1 Star": 0,
+    };
+
+    items.forEach((item) => {
+      const rating = Number(item.rating);
+      if (rating === 5) counts["5 Stars"] += 1;
+      if (rating === 4) counts["4 Stars"] += 1;
+      if (rating === 3) counts["3 Stars"] += 1;
+      if (rating === 2) counts["2 Stars"] += 1;
+      if (rating === 1) counts["1 Star"] += 1;
+    });
+
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .filter((item) => item.value > 0);
+  };
+
+  const priorityData = useMemo(
+    () => countByValue(tickets, "priority"),
+    [tickets]
+  );
+
+  const statusData = useMemo(
+    () => countByValue(tickets, "status"),
+    [tickets]
+  );
+
+  const domainData = useMemo(() => {
+    const counts = {};
+
+    tickets.forEach((ticket) => {
+      const domain = ticket.domain_name || "Unknown";
+      counts[domain] = (counts[domain] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [tickets]);
+
+  const feedbackRatingData = useMemo(
+    () => countFeedbackRatings(feedback),
+    [feedback]
+  );
+
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       const issue = ticket.user_input?.toLowerCase() || "";
@@ -61,10 +149,7 @@ function Dashboard({ focus }) {
   }, [tickets, searchText, priorityFilter, statusFilter, domainFilter]);
 
   const uniqueDomains = useMemo(() => {
-    const names = tickets
-      .map((ticket) => ticket.domain_name)
-      .filter(Boolean);
-
+    const names = tickets.map((ticket) => ticket.domain_name).filter(Boolean);
     return ["All", ...new Set(names)];
   }, [tickets]);
 
@@ -80,9 +165,7 @@ function Dashboard({ focus }) {
 
       setTickets((prevTickets) =>
         prevTickets.map((ticket) =>
-          ticket.id === ticketId
-            ? { ...ticket, status: newStatus }
-            : ticket
+          ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
         )
       );
     } catch (error) {
@@ -98,6 +181,67 @@ function Dashboard({ focus }) {
     setPriorityFilter("All");
     setStatusFilter("All");
     setDomainFilter("All");
+  };
+
+  const renderPieChart = (data) => {
+    if (!data || data.length === 0) {
+      return <p className="muted-text">No chart data available yet.</p>;
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={260}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            outerRadius={90}
+            innerRadius={48}
+            paddingAngle={4}
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={entry.name}
+                fill={chartColors[index % chartColors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0b1829",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              borderRadius: "12px",
+              color: "#ffffff",
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const renderBarChart = (data) => {
+    if (!data || data.length === 0) {
+      return <p className="muted-text">No chart data available yet.</p>;
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" />
+          <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+          <YAxis stroke="#94a3b8" allowDecimals={false} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0b1829",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              borderRadius: "12px",
+              color: "#ffffff",
+            }}
+          />
+          <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="#38bdf8" />
+        </BarChart>
+      </ResponsiveContainer>
+    );
   };
 
   if (loading) {
@@ -125,7 +269,7 @@ function Dashboard({ focus }) {
               ? "Settings"
               : "Dashboard Overview"}
           </h2>
-          <p>Monitor tickets, update status, filter issues and track learning memory.</p>
+          <p>Monitor tickets, analytics, agent performance, and learning memory.</p>
         </div>
 
         <button className="new-ticket-btn" onClick={fetchDashboardData}>
@@ -162,6 +306,42 @@ function Dashboard({ focus }) {
               <strong>{stats.total_prompt_memory}</strong>
               <span>Prompt Memory</span>
             </div>
+          </div>
+        </section>
+      )}
+
+      {!focus && (
+        <section className="analytics-grid">
+          <div className="dark-card chart-card">
+            <div className="chart-title-row">
+              <h3>Tickets by Priority</h3>
+              <span>Priority Analysis</span>
+            </div>
+            {renderPieChart(priorityData)}
+          </div>
+
+          <div className="dark-card chart-card">
+            <div className="chart-title-row">
+              <h3>Tickets by Status</h3>
+              <span>Status Flow</span>
+            </div>
+            {renderPieChart(statusData)}
+          </div>
+
+          <div className="dark-card chart-card">
+            <div className="chart-title-row">
+              <h3>Tickets by Domain</h3>
+              <span>Domain Distribution</span>
+            </div>
+            {renderBarChart(domainData)}
+          </div>
+
+          <div className="dark-card chart-card">
+            <div className="chart-title-row">
+              <h3>Feedback Ratings</h3>
+              <span>User Satisfaction</span>
+            </div>
+            {renderBarChart(feedbackRatingData)}
           </div>
         </section>
       )}
@@ -251,7 +431,11 @@ function Dashboard({ focus }) {
                         </span>
                       </td>
                       <td>
-                        <span className={`status-pill ${ticket.status?.toLowerCase().replace(" ", "-")}`}>
+                        <span
+                          className={`status-pill ${ticket.status
+                            ?.toLowerCase()
+                            .replace(" ", "-")}`}
+                        >
                           {ticket.status}
                         </span>
                       </td>
