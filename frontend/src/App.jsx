@@ -1,8 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
 import Dashboard from "./components/Dashboard";
+import Login from "./components/Login";
 import API_BASE_URL from "./api";
 import "./App.css";
+
 import {
   Bot,
   LayoutDashboard,
@@ -13,10 +15,14 @@ import {
   Settings,
   Plus,
   Send,
-  Sparkles
 } from "lucide-react";
 
 function App() {
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("deskmind_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [page, setPage] = useState("chatbot");
   const [userInput, setUserInput] = useState("");
   const [result, setResult] = useState(null);
@@ -28,14 +34,26 @@ function App() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const menuItems = [
-  { id: "chatbot", label: "Chatbot", icon: Bot },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "tickets", label: "Tickets", icon: Ticket },
-  { id: "domains", label: "Domains", icon: Globe },
-  { id: "feedback", label: "Feedback", icon: MessageCircle },
-  { id: "memory", label: "Prompt Memory", icon: Brain },
-  { id: "settings", label: "Settings", icon: Settings },
-];
+    { id: "chatbot", label: "Chatbot", icon: Bot },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "tickets", label: "Tickets", icon: Ticket },
+    { id: "domains", label: "Domains", icon: Globe },
+    { id: "feedback", label: "Feedback", icon: MessageCircle },
+    { id: "memory", label: "Prompt Memory", icon: Brain },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+
+  const handleLogout = () => {
+    localStorage.removeItem("deskmind_token");
+    localStorage.removeItem("deskmind_user");
+    setUser(null);
+    setPage("chatbot");
+    setUserInput("");
+    setResult(null);
+    setFeedbackComment("");
+    setFeedbackMessage("");
+    setRating(5);
+  };
 
   const handleProcessTicket = async () => {
     if (!userInput.trim()) {
@@ -116,13 +134,17 @@ function App() {
     setPage("chatbot");
   };
 
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
   return (
     <div className="dark-shell">
       <aside className="sidebar">
         <div className="brand">
-         <div className="brand-icon">
-  <Brain size={22} />
-</div>
+          <div className="brand-icon">
+            <Brain size={22} />
+          </div>
           <h1>DeskMindAI</h1>
         </div>
 
@@ -141,10 +163,16 @@ function App() {
 
         <div className="user-card">
           <div className="avatar">A</div>
+
           <div>
             <strong>Admin User</strong>
-            <p>admin@deskmind.ai</p>
+            <p>{user.email}</p>
+
+            <button className="logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
           </div>
+
           <span className="online-dot"></span>
         </div>
       </aside>
@@ -153,12 +181,15 @@ function App() {
         <header className="topbar">
           <div>
             <h2>Welcome back, Admin 👋</h2>
-            <p>Monitor tickets, AI responses, feedback, and prompt memory in one place.</p>
+            <p>
+              Monitor tickets, AI responses, feedback, and prompt memory in one
+              place.
+            </p>
           </div>
 
           <button className="new-ticket-btn" onClick={resetTicket}>
-           <Plus size={16} />
-New Ticket
+            <Plus size={16} />
+            New Ticket
           </button>
         </header>
 
@@ -205,7 +236,9 @@ New Ticket
 
                     <div>
                       <span>Priority</span>
-                      <strong className={`priority-pill ${result.priority?.toLowerCase()}`}>
+                      <strong
+                        className={`priority-pill ${result.priority?.toLowerCase()}`}
+                      >
                         {result.priority}
                       </strong>
                     </div>
@@ -280,6 +313,7 @@ New Ticket
                   <p className="muted-text">
                     {result.ai_summary || "AI summary not available."}
                   </p>
+
                   <span className="status-chip">
                     {result.ai_used
                       ? "Groq AI was used"
@@ -322,7 +356,7 @@ New Ticket
                     {feedbackLoading
                       ? "Saving Feedback..."
                       : "Submit Feedback to Learning Loop"}
-                    <span>→</span>
+                    <Send size={16} />
                   </button>
 
                   {feedbackMessage && (
@@ -336,9 +370,9 @@ New Ticket
 
         {page === "dashboard" && <Dashboard />}
 
-        {["tickets", "domains", "feedback", "memory", "settings"].includes(page) && (
-          <Dashboard focus={page} />
-        )}
+        {["tickets", "domains", "feedback", "memory", "settings"].includes(
+          page
+        ) && <Dashboard focus={page} />}
       </main>
     </div>
   );

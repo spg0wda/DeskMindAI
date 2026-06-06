@@ -1,4 +1,7 @@
-﻿from fastapi import FastAPI, Depends, HTTPException
+﻿import os
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -7,7 +10,7 @@ from agents.llm_service import improve_with_groq
 
 from database import Base, engine, get_db
 from models import User, Domain, Ticket, Feedback, AgentResponse, PromptMemory
-
+load_dotenv()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="DeskMindAI API")
@@ -19,7 +22,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+@app.post("/auth/login")
+def login_admin(request: LoginRequest):
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@deskmind.ai")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
 
+    if request.email != admin_email or request.password != admin_password:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    return {
+        "message": "Login successful",
+        "token": "demo-admin-token",
+        "user": {
+            "email": admin_email,
+            "role": "Admin"
+        }
+    }
 
 @app.get("/")
 def home():
