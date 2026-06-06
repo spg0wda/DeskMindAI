@@ -1,16 +1,37 @@
 ﻿import os
-from pydantic import BaseModel
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
-from agents.supervisor_graph import run_service_desk_agents
-from agents.llm_service import improve_with_groq
 
 from database import Base, engine, get_db
 from models import User, Domain, Ticket, Feedback, AgentResponse, PromptMemory
+
+from agents.supervisor_graph import run_service_desk_agents
+from agents.llm_service import improve_with_groq
+from agents.direct_router import run_memory_router
+from agents.conversation_memory import reset_conversation
+
+
 load_dotenv()
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class MemoryChatRequest(BaseModel):
+    thread_id: str
+    message: str
+
+
+class ResetMemoryRequest(BaseModel):
+    thread_id: str
+
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="DeskMindAI API")
@@ -22,9 +43,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+
+
+@app.get("/")
+def home():
+    return {
+        "message": "DeskMindAI Backend Running with MySQL"
+    }
+
+
 @app.post("/auth/login")
 def login_admin(request: LoginRequest):
     admin_email = os.getenv("ADMIN_EMAIL", "admin@deskmind.ai")
@@ -45,11 +72,18 @@ def login_admin(request: LoginRequest):
         }
     }
 
-@app.get("/")
-def home():
-    return {
-        "message": "DeskMindAI Backend Running with MySQL"
-    }
+
+@app.post("/agent/chat-memory")
+def chat_with_memory(request: MemoryChatRequest):
+    return run_memory_router(
+        thread_id=request.thread_id,
+        message=request.message
+    )
+
+
+@app.post("/agent/reset-memory")
+def reset_agent_memory(request: ResetMemoryRequest):
+    return reset_conversation(request.thread_id)
 
 
 @app.post("/tickets")
@@ -116,6 +150,8 @@ def add_feedback(
         "message": "Feedback saved successfully",
         "feedback_id": feedback.id
     }
+
+
 @app.post("/feedback/learn")
 def add_learning_feedback(
     ticket_id: int,
@@ -126,9 +162,10 @@ def add_learning_feedback(
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
 
     if not ticket:
-        return {
-            "message": "Ticket not found"
-        }
+        raise HTTPException(
+            status_code=404,
+            detail="Ticket not found"
+        )
 
     feedback = Feedback(
         ticket_id=ticket_id,
@@ -141,7 +178,6 @@ def add_learning_feedback(
     db.refresh(feedback)
 
     domain = db.query(Domain).filter(Domain.id == ticket.domain_id).first()
-
     domain_name = domain.name if domain else "General IT Support"
 
     learning_prompt = (
@@ -169,6 +205,7 @@ def add_learning_feedback(
         "prompt_memory_id": prompt_memory.id,
         "domain": domain_name
     }
+
 
 @app.get("/dashboard/stats")
 def dashboard_stats(db: Session = Depends(get_db)):
@@ -198,6 +235,8 @@ def get_tickets(db: Session = Depends(get_db)):
         }
         for ticket in tickets
     ]
+
+
 @app.put("/tickets/{ticket_id}/status")
 def update_ticket_status(
     ticket_id: int,
@@ -229,6 +268,8 @@ def update_ticket_status(
         "ticket_id": ticket.id,
         "new_status": ticket.status
     }
+
+
 @app.get("/tickets/{ticket_id}")
 def get_ticket_detail(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
@@ -281,6 +322,7 @@ def get_ticket_detail(ticket_id: int, db: Session = Depends(get_db)):
         ]
     }
 
+
 @app.get("/dashboard/domains")
 def get_domains(db: Session = Depends(get_db)):
     domains = db.query(Domain).all()
@@ -310,6 +352,8 @@ def get_feedback(db: Session = Depends(get_db)):
         }
         for feedback in feedback_list
     ]
+
+
 @app.get("/dashboard/prompt-memory")
 def get_prompt_memory(db: Session = Depends(get_db)):
     memories = db.query(PromptMemory).order_by(PromptMemory.id.desc()).all()
@@ -324,7 +368,9 @@ def get_prompt_memory(db: Session = Depends(get_db)):
             "created_at": memory.created_at
         }
         for memory in memories
-    ]   
+    ]
+
+
 @app.post("/agent/process")
 def process_with_agents(user_input: str, db: Session = Depends(get_db)):
     agent_result = run_service_desk_agents(user_input)
@@ -379,6 +425,8 @@ def process_with_agents(user_input: str, db: Session = Depends(get_db)):
         "resolution_steps": agent_result["resolution_steps"],
         "learning_note": agent_result["learning_note"]
     }
+
+
 @app.post("/agent/process-ai")
 def process_with_ai_agents(user_input: str, db: Session = Depends(get_db)):
     agent_result = run_service_desk_agents(user_input)
