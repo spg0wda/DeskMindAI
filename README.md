@@ -300,17 +300,37 @@ System: Network Agent redirects to Finance Agent
 
 ## Screenshots
 
-Add your project screenshots here:
+### Login Page
 
-```text
-screenshots/login-page.png
-screenshots/dashboard.png
-screenshots/ticket-detail.png
-screenshots/streamlit-agent-memory.png
-screenshots/voice-demo.png
-```
+![Login Page](screenshots/login-page.png)
 
----
+### React Admin Dashboard
+
+![Dashboard](screenshots/dashboard.png)
+
+### AI Chatbot Response
+
+![Chatbot Response](screenshots/chatbot-response.png)
+
+### Ticket Detail Modal
+
+![Ticket Detail](screenshots/ticket-detail.png)
+
+### Analytics Charts
+
+![Analytics](screenshots/analytics.png)
+
+### PDF Report Export
+
+![PDF Export](screenshots/pdf-export.png)
+
+### Streamlit Agent Memory Demo
+
+![Streamlit Agent Memory](screenshots/streamlit-agent-memory.png)
+
+### Voice-to-Voice Demo
+
+![Voice Demo](screenshots/voice-demo.png)
 
 ## Future Enhancements
 
